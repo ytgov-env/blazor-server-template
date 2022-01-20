@@ -1,4 +1,6 @@
 using BlazorServerTemplate.App.Data;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using MudBlazor.Services;
@@ -26,6 +28,62 @@ try
     builder.Services.AddServerSideBlazor();
     builder.Services.AddMudServices();
     builder.Services.AddSingleton<WeatherForecastService>();
+
+    var configuration = builder.Configuration;
+
+    // Add authentication services
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddCookie(options =>
+    {
+        options.LoginPath = $"/{configuration["AuthNProvider:LoginPath"]}";
+        options.LogoutPath = $"/{configuration["AuthNProvider:LogoutPath"]}";
+    })
+    .AddOpenIdConnect(configuration["AuthNProvider:Name"], options =>
+    {
+        options.Authority = $"https://{configuration["AuthNProvider:Domain"]}";
+        options.ClientId = configuration["AuthNProvider:ClientId"];
+        options.ClientSecret = configuration["AuthNProvider:ClientSecret"];
+        options.ResponseType = "code";
+
+        options.Scope.Clear();
+        options.Scope.Add("openid");
+        options.Scope.Add("profile");
+        options.Scope.Add("email");
+
+        options.CallbackPath = configuration["AuthNProvider:CallbackPath"];
+        options.SignedOutCallbackPath = configuration["AuthNProvider:SignedOutCallbackPath"];
+        options.SignedOutRedirectUri = configuration["AuthNProvider:SignedOutRedirectUri"];
+        options.ClaimsIssuer = configuration["AuthNProvider:Name"];
+
+        options.Events = new OpenIdConnectEvents
+        {
+            OnRedirectToIdentityProviderForSignOut = (context) =>
+            {
+                var logoutUri = $"https://{configuration["AuthNProvider:Domain"]}/v2/logout?client_id={configuration["AuthNProvider:ClientId"]}";
+
+                var postLogoutUri = context.Properties.RedirectUri;
+                if (!string.IsNullOrEmpty(postLogoutUri))
+                {
+                    if (postLogoutUri.StartsWith("/"))
+                    {
+                        var request = context.Request;
+                        postLogoutUri = request.Scheme + "://" + request.Host + request.PathBase + postLogoutUri;
+                    }
+                    logoutUri += $"&returnTo={ Uri.EscapeDataString(postLogoutUri)}";
+                }
+
+                context.Response.Redirect(logoutUri);
+                context.HandleResponse();
+
+                return Task.CompletedTask;
+            }
+        };
+    });
 
     var app = builder.Build();
 
