@@ -26,12 +26,6 @@ try
         )
         .UseWindowsService();
 
-    builder.WebHost.UseKestrel(opts =>
-    {
-        opts.ListenAnyIP(5002);
-        opts.ListenAnyIP(5003, opts => opts.UseHttps());
-    });
-
     // Add services to the container.
     builder.Services.AddRazorPages();
     builder.Services.AddServerSideBlazor();
@@ -152,8 +146,9 @@ try
     app.UseRouting();
 
     app.UseCookiePolicy();
+    /*TODO You can uncomment these lines to enable authN/authZ when you have a valid Auth0 Domain, ClientId, and ClientSecret set in appsettings.json
     app.UseAuthentication();
-    app.UseAuthorization();
+    app.UseAuthorization();*/
 
     app.MapBlazorHub();
     app.MapFallbackToPage("/_Host");
