@@ -1,0 +1,21 @@
+﻿@using System.Security.Claims;
+@using BlazorServerTemplate.App.Extensions
+@inject IConfiguration Configuration;
+
+<AuthorizeView>
+    <Authorized>
+        <MudText Class="mr-3">@context.User.GetFullName()</MudText>
+        <MudAvatar>
+            <MudImage Src="@(context.User.FindFirst("picture")?.Value)" />
+        </MudAvatar>
+        <MudTooltip Text="Sign out">
+            <MudIconButton Class="mr-1" Href="@Configuration["AuthNProvider:LogoutPath"]" Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"/>
+        </MudTooltip>
+    </Authorized>
+    <NotAuthorized>
+        <MudText Class="mr-4">Not signed in</MudText>
+        <MudTooltip Text="Sign in">
+            <MudIconButton Class="mr-3" Href="@Configuration["AuthNProvider:LoginPath"]" Icon="@Icons.Material.Filled.Login" Color="Color.Inherit"/>
+        </MudTooltip>
+    </NotAuthorized>
+</AuthorizeView>

@@ -1,14 +1,19 @@
 using BlazorServerTemplate.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
 using Serilog.Events;
+using BlazorServerTemplate.App.Features.Auth;
+using Microsoft.AspNetCore.Server.Kestrel;
+using Microsoft.Extensions.Options;
 
 Log.Logger = new LoggerConfiguration().MinimumLevel
     .Override("Microsoft", LogEventLevel.Information)
     .Enrich.FromLogContext()
     .WriteTo.Console()
+    .WriteTo.Seq("http://localhost:5341")
     .CreateBootstrapLogger();
 
 try
@@ -30,9 +35,11 @@ try
     builder.Services.AddRazorPages();
     builder.Services.AddServerSideBlazor();
     builder.Services.AddMudServices();
-
+    builder.Services.AddLocalization();
+    builder.Services.AddScoped<IClaimsTransformation, AddRoleClaimsTransformation>();
     var configuration = builder.Configuration;
 
+    /*TODO You can uncomment these lines to enable authN/authZ when you have a valid Auth0 Domain, ClientId, and ClientSecret set in appsettings.json
     // Add authentication services
     builder.Services
         .AddAuthentication(options =>
@@ -47,7 +54,7 @@ try
             options.LogoutPath = $"/{configuration["AuthNProvider:LogoutPath"]}";
         })
         .AddOpenIdConnect(
-            configuration["AuthNProvider:Name"],
+            configuration["AuthNProvider:Name"]!,
             options =>
             {
                 options.Authority = $"https://{configuration["AuthNProvider:Domain"]}";
@@ -64,7 +71,7 @@ try
                 options.SignedOutCallbackPath = configuration[
                     "AuthNProvider:SignedOutCallbackPath"
                 ];
-                options.SignedOutRedirectUri = configuration["AuthNProvider:SignedOutRedirectUri"];
+                options.SignedOutRedirectUri = configuration["AuthNProvider:SignedOutRedirectUri"]!;
                 options.ClaimsIssuer = configuration["AuthNProvider:Name"];
 
                 options.Events = new OpenIdConnectEvents
@@ -106,6 +113,7 @@ try
                 };
             }
         );
+    */
 
 #if DEBUG
     builder.Services.AddDbContextFactory<AppDbContext>(
@@ -144,6 +152,7 @@ try
     app.UseStaticFiles();
 
     app.UseRouting();
+    app.UseRequestLocalization("en-CA");
 
     app.UseCookiePolicy();
     /*TODO You can uncomment these lines to enable authN/authZ when you have a valid Auth0 Domain, ClientId, and ClientSecret set in appsettings.json
@@ -151,7 +160,19 @@ try
     app.UseAuthorization();*/
 
     app.MapBlazorHub();
-    app.MapFallbackToPage("/_Host");
+    app.MapAuthenticationEndpoints();
+    app.MapFallbackToPage("/Host");
+
+    Log.Logger = new LoggerConfiguration().MinimumLevel
+        .Override("Default", LogEventLevel.Information)
+        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+        .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+#if DEBUG
+        .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Information)
+        .WriteTo.Console()
+#endif
+        .WriteTo.Seq(configuration["Seq:Url"]!)
+        .CreateLogger();
 
     app.Run();
     return 0;

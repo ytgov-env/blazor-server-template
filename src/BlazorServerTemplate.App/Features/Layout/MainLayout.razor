@@ -1,21 +1,29 @@
-﻿@inherits LayoutComponentBase
+﻿@using Microsoft.EntityFrameworkCore;
+@using BlazorServerTemplate.Data.Entities.Users;
+@using BlazorServerTemplate.Data;
+@inherits LayoutComponentBase
+@inject IJSRuntime JsRuntime
 
 <MudThemeProvider Theme="_currentTheme"/>
 <MudDialogProvider/>
 <MudSnackbarProvider/>
 
 <MudLayout>
-    <MudAppBar Elevation="0">
+    <MudAppBar Elevation="0" Color="@(_isTestEnvironment ? Color.Dark : Color.Default)">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(_ => DrawerToggle())"/>
+        @if (_isTestEnvironment)
+        {
+            <MudText Color="Color.Tertiary" Typo="Typo.h5">TEST ENVIRONMENT</MudText>
+        }
         <MudSpacer/>
         <LoginDisplay/>
         <MudTooltip Text="Toggle light/dark theme">
-            <MudIconButton Icon="@Icons.Material.Filled.Brightness4" Color="Color.Inherit" OnClick="@(_ => DarkMode())"/>
+            <MudIconButton Icon="@Icons.Material.Filled.Brightness4" Color="Color.Inherit" OnClick="@(_ => ToggleDarkMode())"/>
         </MudTooltip>
     </MudAppBar>
     <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
         <MudDrawerHeader>
-            <MudText Typo="Typo.h6">App Title</MudText>
+            <MudText Typo="Typo.h6">App title</MudText>
         </MudDrawerHeader>
         <NavMenu/>
     </MudDrawer>
@@ -27,6 +35,17 @@
 </MudLayout>
 
 @code {
+    private bool _isTestEnvironment = false;
+    [CascadingParameter]
+    public AppParameters AppParameters { get; set; } = null!;
+
+    private UserSettings UserSettings => AppParameters.UserSettings;
+
+    private async Task<bool> IsTestEnvironment()
+    {
+        return await JsRuntime.InvokeAsync<bool>("isTestEnvironment");
+    }
+
     bool _drawerOpen = true;
 
     void DrawerToggle()
@@ -36,19 +55,26 @@
 
     protected override void OnInitialized()
     {
-        _currentTheme = _defaultTheme;
+        _currentTheme = UserSettings.IsDarkMode ? _darkTheme : _defaultTheme ;
     }
 
-    void DarkMode()
+    protected override async Task OnInitializedAsync()
+    {
+        _isTestEnvironment = await IsTestEnvironment();
+    } 
+
+    async Task ToggleDarkMode()
     {
         _currentTheme = _currentTheme == _defaultTheme ? _darkTheme : _defaultTheme;
+        UserSettings.IsDarkMode = !UserSettings.IsDarkMode;
+        await AppParameters.UpdateSettings();
     }
 
     MudTheme _currentTheme = new();
 
     readonly MudTheme _defaultTheme = new()
     {
-        Palette = new Palette
+        Palette = new PaletteLight
         {
             Black = "#272c34"
         }
@@ -56,7 +82,7 @@
 
     readonly MudTheme _darkTheme = new()
     {
-        Palette = new Palette
+        Palette = new PaletteDark
         {
             Black = "#27272f",
             Background = "#32333d",

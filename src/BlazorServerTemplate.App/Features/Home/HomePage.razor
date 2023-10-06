@@ -1,54 +1,55 @@
-﻿@page "/"
+﻿@attribute [Route(Constants.Routes.HomePage)]
+@inject IJSRuntime JsRuntime
 
 <MudText Typo="Typo.h3" GutterBottom="true">Home</MudText>
 <MudText Typo="Typo.h5" Class="mb-4">Welcome to the blazor server template app!</MudText>
 <MudGrid>
-    <MudItem xs="12" sm="6">
-        <MudAlert Severity="Severity.Normal" Class="mb-4">
-            Feedback/questions? Contact:
-            <MudLink Href="mailto:jon.hodgins@yukon.ca" Typo="Typo.body2" Color="Color.Inherit">
-                <b>jon.hodgins@yukon.ca</b>
-            </MudLink>
-        </MudAlert>
-    </MudItem>
-    <MudItem xs="12">
-        <MudExpansionPanels>
-            <MudExpansionPanel Text="User claims (debug information)">
-                <MudSimpleTable Style="overflow-x: auto;">
-                    <thead>
-                    <tr>
-                        <th>Type</th>
-                        <th>Value</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    @if (_authState is not null)
-                    {
-                        @foreach (var claim in _authState.User.Claims)
-                        {
+    @if (_isTestEnvironment)
+    {
+        <MudItem xs="12">
+            <MudExpansionPanels>
+                <MudExpansionPanel Text="User claims (debug information)">
+                    <MudSimpleTable Style="overflow-x: auto;">
+                        <thead>
                             <tr>
-                                <td>@claim.Type</td>
-                                <td>@claim.Value</td>
+                                <th>Type</th>
+                                <th>Value</th>
                             </tr>
-                        }
-                    }
-                    </tbody>
-                </MudSimpleTable>
-            </MudExpansionPanel>
-        </MudExpansionPanels>
-    </MudItem>
+                        </thead>
+                        <tbody>
+                            @if (_authState is not null)
+                            {
+                                @foreach (var claim in _authState.User.Claims)
+                                {
+                                    <tr>
+                                        <td>@claim.Type</td>
+                                        <td>@claim.Value</td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        </MudItem>
+    }
 </MudGrid>
 
 @code {
+    private bool _isTestEnvironment = false;
+    private AuthenticationState? _authState;
 
     [CascadingParameter]
     private Task<AuthenticationState> AuthenticationStateTask { get; set; } = default!;
 
-    private AuthenticationState? _authState;
-
     protected override async Task OnInitializedAsync()
     {
         _authState = await AuthenticationStateTask;
+        _isTestEnvironment = await IsTestEnvironment();
     }
 
+    private async Task<bool> IsTestEnvironment()
+    {
+        return await JsRuntime.InvokeAsync<bool>("isTestEnvironment");
+    }
 }
