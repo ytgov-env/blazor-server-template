@@ -1,6 +1,4 @@
-﻿@using Microsoft.EntityFrameworkCore;
-@using BlazorServerTemplate.Data.Entities.Users;
-@using BlazorServerTemplate.Data;
+﻿@using BlazorServerTemplate.Data.Entities.Users;
 @inherits LayoutComponentBase
 @inject IJSRuntime JsRuntime
 
@@ -35,18 +33,18 @@
 </MudLayout>
 
 @code {
-    private bool _isTestEnvironment = false;
+    bool _isTestEnvironment;
+    bool _drawerOpen = true;
+    MudTheme _currentTheme = new();
+    UserSettings UserSettings => AppParameters.UserSettings;
+
     [CascadingParameter]
     public AppParameters AppParameters { get; set; } = null!;
-
-    private UserSettings UserSettings => AppParameters.UserSettings;
 
     private async Task<bool> IsTestEnvironment()
     {
         return await JsRuntime.InvokeAsync<bool>("isTestEnvironment");
     }
-
-    bool _drawerOpen = true;
 
     void DrawerToggle()
     {
@@ -61,7 +59,7 @@
     protected override async Task OnInitializedAsync()
     {
         _isTestEnvironment = await IsTestEnvironment();
-    } 
+    }
 
     async Task ToggleDarkMode()
     {
@@ -69,8 +67,6 @@
         UserSettings.IsDarkMode = !UserSettings.IsDarkMode;
         await AppParameters.UpdateSettings();
     }
-
-    MudTheme _currentTheme = new();
 
     readonly MudTheme _defaultTheme = new()
     {
@@ -106,5 +102,4 @@
             TextDisabled = "rgba(255,255,255, 0.2)"
         }
     };
-
 }
